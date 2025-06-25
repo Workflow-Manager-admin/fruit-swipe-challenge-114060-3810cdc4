@@ -127,6 +127,9 @@ function isFruitSliced(fruit, x1, y1, x2, y2) {
 // --- React Components ---
 
 function App() {
+  // --- GAME MODE SUPPORT ---
+  // mode: "classic" (default, lives) or "timer" (timed play)
+  const [gameMode, setGameMode] = useState("classic");
   // Game state
   const [gameState, setGameState] = useState("start"); // start | running | paused | gameover
   const [score, setScore] = useState(0);
@@ -155,6 +158,11 @@ function App() {
     points: [],
   });
 
+  // --- TIMER STATE (only used in timer mode) ---
+  const TIMER_LENGTH = 60; // seconds (can adjust)
+  const [timer, setTimer] = useState(TIMER_LENGTH); // seconds left
+  const timerRef = useRef(null);
+
   // Responsive sizing
   useEffect(() => {
     function handleResize() {
@@ -169,13 +177,37 @@ function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Handle best score
+  // Handle best score (shared for both modes)
   useEffect(() => {
     if (score > bestScore) {
       setBestScore(score);
       localStorage.setItem("fruitninja_best", score.toString());
     }
   }, [score, bestScore]);
+
+  // Game timer (timer mode only)
+  useEffect(() => {
+    if (
+      gameState === "running" &&
+      gameMode === "timer" &&
+      timer > 0
+    ) {
+      timerRef.current = setTimeout(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    if (
+      gameState === "running" &&
+      gameMode === "timer" &&
+      timer === 0
+    ) {
+      setTimeout(() => setGameState("gameover"), 550); // Small pause for last slice effect
+    }
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+    // eslint-disable-next-line
+  }, [gameState, timer, gameMode]);
 
   // Main game loop (animation)
   useEffect(() => {
@@ -223,12 +255,15 @@ function App() {
                 velocityY: vy,
               });
             } else {
-              // Missed if not sliced
-              newMissed++;
+              // Missed fruit logic
+              if (gameMode === "classic") {
+                newMissed++;
+              }
+              // In timer mode, do nothing for missed (no penalty)
             }
           }
         });
-        if (newMissed > 0) {
+        if (gameMode === "classic" && newMissed > 0) {
           setMissed((lastMissed) => lastMissed + newMissed);
           if (missed + newMissed >= 3) setGameState("gameover");
         }
@@ -267,7 +302,8 @@ function App() {
     animFrameRef.current = requestAnimationFrame(gameLoop);
     return () => animFrameRef.current && cancelAnimationFrame(animFrameRef.current);
     // eslint-disable-next-line
-  }, [gameState, dimensions, score, missed]);
+  }, [gameState, dimensions, score, missed, gameMode]);
+
 
   // --- Gesture and Slicing Handlers ---
 
@@ -393,12 +429,23 @@ function App() {
 
   // Reset Game
   // PUBLIC_INTERFACE
-  function startGame() {
+  function startGame(selectedMode = gameMode) {
     setScore(0);
     setMissed(0);
     setFruits([]);
     setSliceTrails([]);
     timeSinceLastFruit.current = 0;
+    setComboCount(0);
+    setLastSlicedTime(0);
+    setBonuses([]);
+    setGesture({ slicing: false, points: [] });
+    if (selectedMode === "timer") {
+      setTimer(TIMER_LENGTH);
+      setGameMode("timer");
+    } else {
+      setGameMode("classic");
+      setTimer(TIMER_LENGTH);
+    }
     setGameState("running");
   }
 
@@ -419,6 +466,7 @@ function App() {
     setMissed(0);
     setFruits([]);
     setSliceTrails([]);
+    setTimer(TIMER_LENGTH);
   }
 
   // Theme settings: Always light, but allow a playful switch
@@ -675,12 +723,46 @@ function App() {
             </span>
           </h1>
           <p className="subtitle">
-            Swipe to slice!<br />
-            Score points. Miss 3 fruits and it's GAME OVER.
+            {gameMode === "classic"
+              ? <>Swipe to slice!<br />Score points. Miss 3 fruits and it's GAME OVER.</>
+              : <>Timer Mode: Slice as many fruits as you can in <b>{TIMER_LENGTH}</b> seconds!<br />
+                No penalty for missed fruits.</>
+            }
           </p>
-          <button onClick={startGame} className="btn primary large">
+          {/* Mode selection controls */}
+          <div style={{ marginBottom: 18 }}>
+            <button
+              onClick={() => setGameMode("classic")}
+              className={`btn ${gameMode === "classic" ? "primary" : ""}`}
+              style={{ minWidth: 120, marginRight: 4 }}
+              aria-pressed={gameMode === "classic"}
+            >
+              Classic
+            </button>
+            <button
+              onClick={() => setGameMode("timer")}
+              className={`btn ${gameMode === "timer" ? "primary" : ""}`}
+              style={{ minWidth: 120, marginLeft: 4 }}
+              aria-pressed={gameMode === "timer"}
+            >
+              Timer
+            </button>
+          </div>
+          <button
+            onClick={() => startGame(gameMode)}
+            className="btn primary large"
+            style={{ minWidth: 158, marginTop: 2 }}
+          >
             Start Game
           </button>
+          {gameMode === "timer" && (
+            <div style={{
+              marginTop: 18, color: "#4CAF50", fontWeight: 400, fontSize: "1em"
+            }}>
+              <TimerBar timer={TIMER_LENGTH} total={TIMER_LENGTH} />
+              <div style={{ fontSize: "0.96em", color: "#888", marginTop: 2 }}>Try for a high score!</div>
+            </div>
+          )}
         </div>
       );
     }
@@ -707,7 +789,21 @@ function App() {
               <span style={{ color: "#43A047" }}>🎉 NEW HIGH SCORE!</span>
             ) : null}
           </p>
-          <button onClick={startGame} className="btn primary large">
+          {gameMode === "timer" && (
+            <div style={{
+              marginTop: 8,
+              fontSize: "1rem",
+              color: "#4CAF50",
+              marginBottom: 4,
+              fontWeight: 500
+            }}>
+              Mode: Timer &nbsp; • &nbsp; Played for {TIMER_LENGTH} sec
+            </div>
+          )}
+          <button
+            onClick={() => startGame(gameMode)}
+            className="btn primary large"
+          >
             Play Again
           </button>
           <button onClick={toStartScreen} className="btn">
@@ -730,25 +826,61 @@ function App() {
     return null;
   }
 
-  // Top bar - score, missed, best
+  // Top bar - score, missed, best, OR timer (contextual)
   function renderScoreBar() {
     return (
       <div className="scorebar">
         <span>
           🍏 Score: <b>{score}</b>
         </span>
-        <span style={{ marginLeft: 14, color: "#888" }}>
-          {Array.from({ length: 3 }).map((_, i) =>
-            i < 3 - missed ? (
-              <span key={i} role="img" aria-label="life" style={{fontSize:'1.5em'}}>❤️</span>
-            ) : (
-              <span key={i} role="img" aria-label="lost" style={{opacity:0.25,fontSize:'1.3em'}}>💔</span>
-            )
-          )}
-        </span>
+        {gameMode === "timer" ? (
+          <span style={{ marginLeft: 12, minWidth: 120 }}>
+            <TimerBar timer={timer} total={TIMER_LENGTH} />
+          </span>
+        ) : (
+          <span style={{ marginLeft: 14, color: "#888" }}>
+            {Array.from({ length: 3 }).map((_, i) =>
+              i < 3 - missed ? (
+                <span key={i} role="img" aria-label="life" style={{ fontSize: '1.5em' }}>❤️</span>
+              ) : (
+                <span key={i} role="img" aria-label="lost" style={{ opacity: 0.25, fontSize: '1.3em' }}>💔</span>
+              )
+            )}
+          </span>
+        )}
         <span className="scorebar-best">
           🏆 Best:{" "}
           <b style={{ color: "#FF5722" }}>{Math.max(score, bestScore)}</b>
+        </span>
+      </div>
+    );
+  }
+
+  // Timer Bar Component
+  function TimerBar({ timer, total }) {
+    const pct = Math.max(0, Math.min(1, timer / total));
+    const accent = pct < 0.22 ? "#F44336" : pct < 0.6 ? "#FFC107" : "#43A047";
+    return (
+      <div style={{
+        display: "flex", alignItems: "center", width: 98, margin: "0 auto"
+      }}>
+        <span role="img" aria-label="timer" style={{ fontSize: "1.19em", marginRight: 6 }}>⏰</span>
+        <div style={{
+          background: "#eee", borderRadius: 12, position: "relative", flex: 1, height: 13, minWidth: 60,
+          marginRight: 5, overflow: "hidden"
+        }}>
+          <div style={{
+            width: `${Math.round(pct * 100)}%`,
+            background: accent,
+            height: 13,
+            borderRadius: 12,
+            transition: "width 0.36s cubic-bezier(.7,1.1,.43,0.97), background 0.22s",
+          }} />
+        </div>
+        <span style={{
+          minWidth: 16, color: accent, fontWeight: 700, fontSize: "1em", textShadow: "0 1px 2px #fff"
+        }}>
+          {timer}
         </span>
       </div>
     );
