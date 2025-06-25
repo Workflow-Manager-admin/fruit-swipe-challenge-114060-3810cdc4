@@ -261,22 +261,26 @@ function App() {
     const { x: x1, y: y1 } = gesture.points[gesture.points.length - 1];
     const { x: x2, y: y2 } = p;
 
-    setFruits((oldFruits) =>
-      oldFruits.map((fruit) => {
-        if (
-          !fruit.sliced &&
-          isFruitSliced(fruit, x1, y1, x2, y2)
-        ) {
-          // Add to score!
-          setScore((oldScore) => oldScore + 1);
-          // Visual slice line:
-          fruit.sliceLine = { x1, y1, x2, y2 };
-          fruit.sliceAngle = Math.atan2(y2 - y1, x2 - x1);
-          fruit.sliced = true;
+    // To ensure the score updates instantly and exactly once per fruit,
+    // accumulate how many fruits were sliced in this event, then increment score ONCE per fruit.
+    setFruits((oldFruits) => {
+      let slicedCount = 0;
+      const updated = oldFruits.map((fruit) => {
+        if (!fruit.sliced && isFruitSliced(fruit, x1, y1, x2, y2)) {
+          slicedCount++;
+          return {
+            ...fruit,
+            sliced: true,
+            sliceLine: { x1, y1, x2, y2 },
+            sliceAngle: Math.atan2(y2 - y1, x2 - x1),
+          };
         }
         return { ...fruit };
-      })
-    );
+      });
+      // Update the score the correct number of times based on fruits sliced in this swipe
+      if (slicedCount > 0) setScore((cur) => cur + slicedCount);
+      return updated;
+    });
   }
 
   // PUBLIC_INTERFACE
