@@ -1,0 +1,4 @@
+{
+    "command": "npm run test",
+    "working_directory": "/home/kavia/workspace/code-generation/fruit-swipe-challenge-114060-3810cdc4/fruit_ninja_frontend_workspace/fruit_ninja_frontend"
+}
