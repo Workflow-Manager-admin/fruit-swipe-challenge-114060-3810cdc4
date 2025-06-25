@@ -62,7 +62,8 @@ function createFruit(boardWidth, boardHeight) {
     x,
     y: boardHeight + fruitType.radius,
     velocityX: randomBetween(-2, 2),
-    velocityY: randomBetween(-14, -10),
+    // Launch higher: increase initial upward velocity range (more negative value)
+    velocityY: randomBetween(-22, -16),
     gravity: 0.35 + Math.random() * 0.05,
     sliced: false,
     sliceLine: null,
