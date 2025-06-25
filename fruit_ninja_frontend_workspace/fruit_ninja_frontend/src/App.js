@@ -15,54 +15,91 @@ const FRUITS = [
     name: "🍎",
     color: "#F44336",
     radius: 36,
+    points: 1,
+    type: "apple"
   },
   {
     name: "🍉",
     color: "#4CAF50",
     radius: 38,
+    points: 1,
+    type: "watermelon"
   },
   {
     name: "🍋",
     color: "#FFC107",
     radius: 34,
+    points: 1,
+    type: "lemon"
   },
   {
     name: "🥝",
     color: "#009688",
     radius: 34,
+    points: 1,
+    type: "kiwi"
   },
   {
     name: "🍊",
     color: "#FF9800",
     radius: 32,
+    points: 1,
+    type: "orange"
   },
   {
     name: "🍌",
     color: "#FFD600",
     radius: 30,
+    points: 1,
+    type: "banana"
   },
+  // Golden fruit
+  {
+    name: "🥇",
+    color: "#ffe066",
+    radius: 38,
+    points: 10,
+    type: "golden",
+    bonus: "golden"
+  },
+  // Star fruit
+  {
+    name: "⭐",
+    color: "#ffec40",
+    radius: 34,
+    points: 5,
+    type: "star",
+    bonus: "star"
+  }
 ];
 
-// For random fruit launch properties
 function randomBetween(a, b) {
   return a + Math.random() * (b - a);
 }
 
-// Fruit spawn logic
+// Fruit spawn logic (handle probability for golden/star fruit)
 function createFruit(boardWidth, boardHeight) {
-  const fruitType = FRUITS[Math.floor(Math.random() * FRUITS.length)];
+  // 3% chance golden, 5% star, else normal fruit
+  let fruitType;
+  const rng = Math.random();
+  if (rng < 0.03) {
+    fruitType = FRUITS.find(f => f.bonus === "golden");
+  } else if (rng < 0.08) {
+    fruitType = FRUITS.find(f => f.bonus === "star");
+  } else {
+    // only regular fruits
+    fruitType = FRUITS[Math.floor(randomBetween(0, 6))];
+  }
   const x = randomBetween(
     fruitType.radius + 40,
     boardWidth - fruitType.radius - 40
   );
-  // initial y: below the bottom of the board
   return {
     id: `fruit_${Date.now()}_${Math.random()}`,
     ...fruitType,
     x,
     y: boardHeight + fruitType.radius,
     velocityX: randomBetween(-2, 2),
-    // Launch higher: increase initial upward velocity range (more negative value)
     velocityY: randomBetween(-22, -16),
     gravity: 0.35 + Math.random() * 0.05,
     sliced: false,
@@ -89,7 +126,6 @@ function isFruitSliced(fruit, x1, y1, x2, y2) {
 
 // --- React Components ---
 
-// PUBLIC_INTERFACE
 function App() {
   // Game state
   const [gameState, setGameState] = useState("start"); // start | running | paused | gameover
@@ -105,6 +141,13 @@ function App() {
   const animFrameRef = useRef(null);
   const timeSinceLastFruit = useRef(0);
   const runningRef = useRef(false);
+
+  // Combo mechanic
+  const [lastSlicedTime, setLastSlicedTime] = useState(0);
+  const [comboCount, setComboCount] = useState(0);
+
+  // Bonus display (text, xy, type, ts)
+  const [bonuses, setBonuses] = useState([]); // {msg, x, y, ts, color}
 
   // For slicing gestures
   const [gesture, setGesture] = useState({
@@ -215,6 +258,8 @@ function App() {
       setSliceTrails((old) =>
         old.length > 12 ? old.slice(-12) : old.filter((t) => t.t > t - 350)
       );
+      // Remove old bonuses (after 1.2s)
+      setBonuses((old) => old.filter((b) => t - (b.ts || 0) < 1200));
       if (runningRef.current)
         animFrameRef.current = requestAnimationFrame(gameLoop);
     }
@@ -261,13 +306,13 @@ function App() {
     const { x: x1, y: y1 } = gesture.points[gesture.points.length - 1];
     const { x: x2, y: y2 } = p;
 
-    // To ensure the score updates instantly and exactly once per fruit,
-    // accumulate how many fruits were sliced in this event, then increment score ONCE per fruit.
+    // Combo & Bonus logic
     setFruits((oldFruits) => {
-      let slicedCount = 0;
+      let newSlices = [];
+      let now = Date.now();
       const updated = oldFruits.map((fruit) => {
         if (!fruit.sliced && isFruitSliced(fruit, x1, y1, x2, y2)) {
-          slicedCount++;
+          newSlices.push({fruit, x: fruit.x, y: fruit.y});
           return {
             ...fruit,
             sliced: true,
@@ -277,8 +322,64 @@ function App() {
         }
         return { ...fruit };
       });
-      // Update the score the correct number of times based on fruits sliced in this swipe
-      if (slicedCount > 0) setScore((cur) => cur + slicedCount);
+
+      // Combo: if slicing multiple in <0.35s, or >=2 at once = combo
+      // Show bonus for slicing golden/star, or for combo
+      if (newSlices.length > 0) {
+        // Count combo (for quick consecutive slices)
+        if (now - lastSlicedTime < 350) {
+          setComboCount((c) => c + newSlices.length);
+        } else {
+          setComboCount(newSlices.length);
+        }
+        setLastSlicedTime(now);
+
+        // Points calculation and bonus visuals
+        let gainedScore = 0;
+        let newBonuses = [];
+        let slicedBonus = false;
+        newSlices.forEach(({fruit, x, y}) => {
+          // bonus fruit?
+          if (fruit.bonus === "golden") {
+            gainedScore += fruit.points;
+            slicedBonus = true;
+            newBonuses.push({
+              msg: "+10 GOLDEN!",
+              color: "#ffd700",
+              x, y,
+              ts: now
+            });
+          } else if (fruit.bonus === "star") {
+            gainedScore += fruit.points;
+            slicedBonus = true;
+            newBonuses.push({
+              msg: "+5 STAR!",
+              color: "#ffe066",
+              x, y,
+              ts: now
+            });
+          } else {
+            gainedScore += (fruit.points || 1);
+          }
+        });
+        // Combo bonus (2 or more in one swipe or chain of quick slices)
+        if (comboCount + newSlices.length >= 2) {
+          const bonus = (comboCount + newSlices.length) * 2; // 2 pts per combo fruit
+          gainedScore += bonus;
+          // Show bonus message above center of slice segment
+          let sumX = 0, sumY = 0;
+          newSlices.forEach(({x, y}) => { sumX += x; sumY += y; });
+          newBonuses.push({
+            msg: `Combo +${bonus}!`,
+            color: "#43A047",
+            x: sumX / newSlices.length,
+            y: sumY / newSlices.length - 24,
+            ts: now
+          });
+        }
+        setBonuses((prev) => [...prev, ...newBonuses]);
+        setScore((cur) => cur + gainedScore);
+      }
       return updated;
     });
   }
@@ -331,14 +432,19 @@ function App() {
   // Render fruits on SVG
   function renderFruits() {
     return fruits.map((fruit) => {
-      // Not sliced: normal fruit
+      // Not sliced: normal fruit (override golden/star style with light border)
       if (!fruit.sliced) {
+        let isBonus = fruit.bonus === "golden" || fruit.bonus === "star";
+        let border = isBonus ? "#ffeb3b" : "#fff";
+        let shadow = isBonus
+          ? "drop-shadow(0 2px 11px #ffe06688)"
+          : "drop-shadow(0 2px 7px rgba(0,0,0,0.16))";
         return (
           <g
             key={fruit.id}
             style={{
               pointerEvents: "none",
-              filter: "drop-shadow(0 2px 7px rgba(0,0,0,0.16))",
+              filter: shadow
             }}
           >
             <circle
@@ -346,7 +452,9 @@ function App() {
               cy={fruit.y}
               r={fruit.radius}
               fill={fruit.color}
-              opacity={0.88}
+              opacity={isBonus ? 1 : 0.88}
+              stroke={border}
+              strokeWidth={isBonus ? 4 : 0}
             />
             <text
               x={fruit.x}
@@ -358,6 +466,7 @@ function App() {
                 userSelect: "none",
                 pointerEvents: "none",
                 dominantBaseline: "middle",
+                filter: isBonus ? "drop-shadow(0 0 9px #fff)" : undefined
               }}
             >
               {fruit.name}
@@ -365,15 +474,26 @@ function App() {
           </g>
         );
       } else {
-        // Sliced: show split + simple effect
-        // Show fruit in 2 mirrored halves, separated by slice angle
+        // Sliced: show split + simple effect (bonus glimmer)
         const dx = Math.cos(fruit.sliceAngle || 0) * fruit.radius * 0.7;
         const dy = Math.sin(fruit.sliceAngle || 0) * fruit.radius * 0.7;
+        const extraGlow = fruit.bonus
+          ? (
+            <circle
+              cx={fruit.x}
+              cy={fruit.y}
+              r={fruit.radius * 0.92}
+              fill={fruit.bonus === "golden" ? "#ffe066" : "#ffec40"}
+              opacity={0.23}
+            />
+          ) : null;
         return (
           <g
             key={fruit.id + "_sliced"}
             filter="drop-shadow(0 3px 8px rgba(80,0,0,0.14))"
           >
+            {/* Glimmer */}
+            {extraGlow}
             {/* Left half */}
             <g
               style={{
@@ -461,6 +581,46 @@ function App() {
       "L", cx, cy,
       "Z"
     ].join(" ");
+  }
+
+  // Render active bonus effects (floating/fading text in SVG)
+  function renderBonusEffects() {
+    if (!bonuses.length) return null;
+    return (
+      <g>
+        {bonuses.map(({msg, x, y, ts, color}, i) => {
+          let t = Math.min((Date.now() - ts) / 1050, 1.12);
+          let opacity = 1 - t;
+          let dy = y - 60 * t + Math.random() * 8 * (1 - opacity);
+          let fontSz = 21 + 19 * (1 - t);
+          let textShadow = color === "#ffd700" || color === "#ffe066"
+            ? "0 0 19px #ffe066cc,0 1px 12px #fff"
+            : "0 2px 11px #fff";
+          return (
+            <text
+              key={msg+ts+i}
+              x={x}
+              y={dy}
+              fontSize={fontSz}
+              fill={color}
+              opacity={opacity}
+              stroke="#fff"
+              strokeWidth={1.1}
+              textAnchor="middle"
+              style={{
+                fontWeight: 700,
+                letterSpacing: ".5px",
+                filter: "drop-shadow(0 2px 9px #fff)",
+                textShadow
+              }}
+              pointerEvents="none"
+            >
+              {msg}
+            </text>
+          );
+        })}
+      </g>
+    );
   }
 
   // Render slice trails
@@ -661,6 +821,8 @@ function App() {
               {/* game fruit and effects */}
               {/* Fruits */}
               {renderFruits()}
+              {/* Bonus: floating, fading texts */}
+              {renderBonusEffects()}
               {/* Slice trail */}
               {renderSliceTrails()}
               {/* Slicing Gesture Visual (highlight last active slice) */}
