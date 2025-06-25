@@ -1,6 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./App.css";
 
+/**
+ * Fruit Ninja React App
+ * All game logic is included here, using a playful, accessible, and modern React SPA architecture.
+ */
 /*
   Colors for theme:
   --accent: #F44336;

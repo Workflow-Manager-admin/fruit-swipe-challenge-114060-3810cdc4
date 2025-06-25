@@ -1,104 +1,221 @@
-/* CSS Variables for Theme Management */
+/* --- Playful Fruit Ninja Styling --- */
 :root {
-  /* Light theme colors */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8f9fa;
-  --text-primary: #282c34;
-  --text-secondary: #61dafb;
-  --border-color: #e9ecef;
-  --button-bg: #007bff;
-  --button-text: #ffffff;
+  --primary: #4caf50;
+  --secondary: #ffc107;
+  --accent: #f44336;
+  --white: #fff;
+  --board-bg: #fffbe9;
+  --text-dark: #232323;
+  --border-col: #ffecb2;
 }
 
+/* Allow a "dark" swappable mode for fun. */
 [data-theme="dark"] {
-  /* Dark theme colors */
-  --bg-primary: #1a1a1a;
-  --bg-secondary: #282c34;
-  --text-primary: #ffffff;
-  --text-secondary: #61dafb;
-  --border-color: #404040;
-  --button-bg: #0056b3;
-  --button-text: #ffffff;
+  --primary: #263238;
+  --secondary: #ffd740;
+  --accent: #f48fb1;
+  --white: #212121;
+  --board-bg: #263238;
+  --text-dark: #fffbe9;
+  --border-col: #191e22;
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, Helvetica, sans-serif;
+  background-color: var(--white);
+  color: var(--text-dark);
+  min-height: 100vh;
 }
 
 .App {
+  min-height: 100vh;
+  background: var(--white);
+  color: var(--text-dark);
+}
+.theme-toggle {
+  position: fixed;
+  top: 26px;
+  right: 22px;
+  z-index: 401;
+  border-radius: 10px;
+  border: none;
+  padding: 7px 20px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  background: var(--white);
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, box-shadow .19s;
+  box-shadow: 0 2px 8px 0 rgba(76,175,80,0.08);
+}
+.theme-toggle:focus, .theme-toggle:hover {
+  box-shadow: 0 6px 18px 0 rgba(252,220,80,0.19);
+  outline: none;
+  color: var(--primary);
+}
+.game-container {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 20px 0 20px 0;
+  min-height: 96vh;
+}
+.game-board-outer {
+  width: 100%;
+  background: #f8f9fa;
+  border: 2px solid var(--border-col, #ececec);
+  border-radius: 19px;
+  box-shadow: 2px 6px 22px 0px rgba(76,175,80,0.08);
+  position: relative;
+  margin: auto;
+  touch-action: none;
+  user-select: none;
+  min-height: 380px;
+}
+.game-board {
+  display: block;
+  width: 100%;
+  background: var(--board-bg, #fffbe9);
+  border-radius: 19px;
+  /* Responsive fix for mobile */
+  max-width: 100vw;
+  min-height: 400px;
+}
+
+.scorebar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size:1.22rem;
+  padding: 10px 8px 4px 14px;
+  background: #fff;
+  border-radius: 15px 15px 0 0;
+  border-bottom: 2.5px solid var(--secondary);
+  box-shadow: 0 1px 8px rgba(252,220,80,0.04);
+  min-height: 52px;
+  margin-bottom: -3px;
+  font-weight: 500;
+}
+
+.scorebar-best {
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 1.1em;
+  padding-left: 12px;
+}
+
+.btn {
+  padding: 10px 26px;
+  font-size: 1.18rem;
+  font-weight: 500;
+  border-radius: 8px;
+  margin: 10px 8px 0 8px;
+  border: none;
+  background: #ececec;
+  color: #222;
+  cursor: pointer;
+  transition: box-shadow 0.18s, background 0.2s, color 0.18s;
+}
+.btn.primary {
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+.btn.primary.large {
+  font-size: 1.35rem;
+  padding: 15px 44px;
+}
+.btn.pause-btn {
+  background: var(--secondary);
+  color: #fff;
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 370;
+  font-size: 1.7rem;
+  font-weight: 800;
+  border-radius: 50%;
+  width: 54px;
+  height: 54px;
+  box-shadow: 0 2px 12px rgba(67,160,71,0.10);
+}
+.btn.secondary {
+  background: var(--secondary);
+  color: #fff;
+}
+.btn:hover, .btn:focus {
+  box-shadow: 0 3px 10px 0px rgba(67,160,71,0.14);
+  outline: none;
+}
+.emojiBrand {
+  vertical-align: middle;
+  padding: 0 2px;
+}
+.footer {
+  margin: 32px 0 7px 0;
   text-align: center;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  min-height: 100vh;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  color: #BDBDBD;
+  opacity: 0.88;
+  font-size: 1.08rem;
+  letter-spacing: .01em;
 }
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: var(--bg-secondary);
-  min-height: 100vh;
+.game-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 300;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: var(--text-primary);
-  transition: background-color 0.3s ease;
-  position: relative;
+  background: rgba(255,255,255,0.95);
+  border-radius: 19px;
+  animation: fadeIn 0.4s;
 }
-
-.App-link {
-  color: var(--text-secondary);
-  transition: color 0.3s ease;
+.game-overlay h1, .game-overlay h2 {
+  font-size: 2.5rem;
+  margin: 0 0 18px 0;
+  font-weight: 700;
+  letter-spacing: 2.5px;
 }
-
-.theme-toggle {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background-color: var(--button-bg);
-  color: var(--button-text);
-  border: none;
-  border-radius: 8px;
-  padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.game-overlay.start .subtitle {
+  font-size: 1.15rem;
+  margin-bottom: 19px;
+  color: var(--primary);
+  letter-spacing: .01em;
+  font-weight: 500;
 }
-
-.theme-toggle:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  opacity: 0.9;
-}
-
-.theme-toggle:active {
-  transform: translateY(0);
-}
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Responsive design for mobile */
 @media (max-width: 768px) {
   .theme-toggle {
-    top: 10px;
-    right: 10px;
+    top: 6px;
+    right: 6px;
     padding: 8px 16px;
-    font-size: 12px;
+    font-size: 14px;
   }
+  .game-board {
+    max-width: 99vw !important;
+    min-height: 230px;
+  }
+  .scorebar {
+    font-size: 1.01rem;
+    min-height: 44px;
+  }
+  .footer {
+    font-size: .97rem;
+    margin: 19px 0 7px 0;
+  }
+  .btn, .btn.primary, .btn.secondary {
+    font-size: 1.02rem;
+    padding: 9px 19px;
+    border-radius: 7px;
+  }
+}
+@media (max-width:400px) {
+  .footer{font-size:.78rem}
+}
+@keyframes fadeIn {
+  from { opacity: 0; } to { opacity: 1; }
 }
